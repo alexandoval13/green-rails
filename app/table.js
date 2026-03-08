@@ -1,7 +1,7 @@
 import { parseCSV, readFile, exportTableToCSV } from '../scripts/parseCSV.js';
 
 /** Creates the table elements */
-const tableContainer = document.getElementById('data-container');
+const tableContainer = document.getElementById('table-container');
 
 const downloadButton = document.createElement('button');
 downloadButton.hidden = true;
@@ -10,6 +10,8 @@ downloadButton.addEventListener('click', (e) => exportTableToCSV(e));
 
 const dataKey = localStorage.getItem('green-rails-data-key');
 const headerList = ['name', 'date planted', 'date germinated'];
+
+const TABLE_FORM_ID = 'table-input-form';
 
 /** TODO: UTILS */
 function formatValue(val) {
@@ -22,20 +24,73 @@ function formatValue(val) {
   return cleanValue;
 }
 
-// TODO: FIX IN TABLE FORM
-const tableForm = document.createElement('form');
-tableForm.id = 'data-form';
-tableForm.addEventListener('submit', handleSubmit);
-console.log({ tableForm });
-tableContainer.appendChild(tableForm);
+function handleTableSubmit(e) {
+  e.preventDefault();
+
+  const data = new FormData(e.target);
+  const dataObject = Object.fromEntries(data.entries());
+
+  // console.log('click', { name });
+  if (!dataObject[`${TABLE_FORM_ID}-name`]) {
+    alert('whoops, nothing new');
+    return;
+  }
+
+  const values = [
+    dataObject[`${TABLE_FORM_ID}-name`],
+    dataObject[`${TABLE_FORM_ID}-date-planted`],
+    dataObject[`${TABLE_FORM_ID}-date-germinated`],
+    'edit',
+  ];
+
+  const newLine = values.join(',');
+
+  const key = localStorage.getItem('green-rails-data-key');
+  const lines = `${localStorage.getItem(
+    localStorage.getItem('green-rails-data-key'),
+  )}`
+    .trim()
+    .split('\n');
+
+  const header = lines[0];
+  const body = lines.slice(1).join('\n');
+
+  const newText = `${header}\n${newLine}\n${body}`;
+  console.log(newText);
+
+  localStorage.setItem(key, newText);
+
+  const tbody = document.querySelector('#data-table tbody');
+
+  if (!tbody) {
+    alert('creating new table...');
+  } else {
+    const newRow = tbody.insertRow(1);
+    values.forEach((val, index) => {
+      const cell = newRow.insertCell(index);
+      cell.textContent = val;
+    });
+  }
+
+  event.target.reset();
+}
 
 function renderTable(headers = [], rows = []) {
+  // clear the table container
   tableContainer.textContent = '';
 
+  // create the form element for input row
+  const tableForm = document.createElement('form');
+  tableForm.id = TABLE_FORM_ID;
+  tableForm.addEventListener('submit', handleTableSubmit);
+
+  tableContainer.appendChild(tableForm);
+
+  // build the table
   const table = document.createElement('table');
   table.id = 'data-table';
 
-  // add header
+  // add table header
   const thead = document.createElement('thead');
   table.appendChild(thead);
 
@@ -49,7 +104,7 @@ function renderTable(headers = [], rows = []) {
 
   thead.appendChild(headerRow);
 
-  // add body
+  // add table body
   const tbody = document.createElement('tbody');
   table.appendChild(tbody);
 
@@ -60,14 +115,18 @@ function renderTable(headers = [], rows = []) {
     let el;
 
     if (i == headers.length - 1) {
-      el = createInputElement('submit', 'submitButton', null, 'Add');
+      el = createInputElement('submit', `${TABLE_FORM_ID}-submit`, null, 'Add');
       el.type = 'submit';
       el.textContent = 'Add';
     } else {
-      el = createInputElement('text', `input-${h}`);
+      console.log({ h: h.split(' ').join('-') });
+      el = createInputElement(
+        'text',
+        `${TABLE_FORM_ID}-${h.split(' ').join('-')}`,
+      );
     }
 
-    el.setAttribute('form', 'data-form');
+    el.setAttribute('form', `${TABLE_FORM_ID}`);
 
     td.appendChild(el);
     tr.appendChild(td);
@@ -123,4 +182,5 @@ fileInput.addEventListener('change', async function (e) {
     localStorage.setItem(file.name, data.text);
   }
 });
+
 tableContainer.appendChild(fileInput);
